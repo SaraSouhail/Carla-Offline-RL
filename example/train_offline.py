@@ -2,21 +2,23 @@ import os
 import h5py
 import numpy as np
 import torch
+import pandas as pd
 from tqdm import tqdm
 from agents.ql_diffusion import Diffusion_QL
 
-# --- CONFIGURATION DES CHEMINS ---
-# Cette structure permet de fonctionner en local ET sur Kaggle sans erreur
+# --- 1. CONFIGURATION DES CHEMINS ---
 if os.path.exists('/kaggle/input'):
+    # Chemin spécifique à ton dataset sur Kaggle
     dataset_path = '/kaggle/input/datasets/sarasouhail/dataset/easycarla_offline_dataset.hdf5'
     save_dir = '/kaggle/working/params_dql_new'
 else:
+    # Chemin pour ton usage local
     dataset_path = '../dataset/easycarla_offline_dataset.hdf5'
     save_dir = 'params_dql_new'
 
 os.makedirs(save_dir, exist_ok=True)
 
-# --- CHARGEMENT DU DATASET ---
+# --- 2. CHARGEMENT DU DATASET ---
 print(f"Chargement du dataset : {dataset_path}")
 with h5py.File(dataset_path, 'r') as f:
     observations = f['observations'][:]
@@ -25,24 +27,36 @@ with h5py.File(dataset_path, 'r') as f:
     rewards = f['rewards'][:]
     dones = f['done'][:]
 
-print("Dataset chargé avec succès.")
+print(f"Dataset chargé avec succès ({len(observations)} échantillons).")
 
-# 3. Initialisation Agent
+# --- 3. INITIALISATION DE L'AGENT ---
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-agent = Diffusion_QL(state_dim=307, action_dim=3, max_action=1.0, 
-                     device=device, discount=0.99, tau=0.005)
+agent = Diffusion_QL(
+    state_dim=307, 
+    action_dim=3, 
+    max_action=1.0, 
+    device=device, 
+    discount=0.99, 
+    tau=0.005
+)
 
-# 4. Boucle d'entraînement
+# --- 4. CONFIGURATION DE L'ENTRAÎNEMENT ---
 epochs = 20
 steps_per_epoch = 1000
 batch_size = 256
+history = [] # Pour stocker les données des courbes
 
 print(f"Début de l'entraînement sur {device}...")
 
+# --- 5. BOUCLE D'ENTRAÎNEMENT ---
 for epoch in range(1, epochs + 1):
     epoch_metrics = []
     
-    for step in range(steps_per_epoch):
+    # Barre de progression pour chaque époque
+    pbar = tqdm(range(steps_per_epoch), desc=f"Époque {epoch}/{epochs}")
+    
+    for step in pbar:
+        # Échantillonnage aléatoire
         idx = np.random.randint(0, len(observations), size=batch_size)
         
         batch = {
@@ -53,17 +67,33 @@ for epoch in range(1, epochs + 1):
             'terminals': torch.tensor(dones[idx], dtype=torch.float32).to(device)
         }
 
-        # Entraînement et récupération des dictionnaires de metrics
+        # Entraînement
         m = agent.train(batch, iterations=1)
         epoch_metrics.append(m)
+        
+        # Mise à jour de la barre de progression (optionnel)
+        if step % 100 == 0:
+            pbar.set_postfix({'BC': f"{np.mean(m['bc_loss']):.4f}"})
 
-    # Calcul des moyennes (m est un dictionnaire de listes)
+    # Calcul des moyennes de l'époque
     avg_bc = np.mean([np.mean(m['bc_loss']) for m in epoch_metrics])
     avg_ql = np.mean([np.mean(m['ql_loss']) for m in epoch_metrics])
     avg_critic = np.mean([np.mean(m['critic_loss']) for m in epoch_metrics])
 
+    # Enregistrement dans l'historique
+    history.append({
+        'epoch': epoch,
+        'bc_loss': avg_bc,
+        'ql_loss': avg_ql,
+        'critic_loss': avg_critic
+    })
+    
+    # Sauvegarde immédiate du log CSV (pour voir les courbes même si l'entraînement est coupé)
+    pd.DataFrame(history).to_csv(os.path.join(save_dir, 'training_log.csv'), index=False)
+
+    # Sauvegarde du modèle
     agent.save_model(save_dir, id=f"epoch_{epoch}")
     
-    print(f"Époque {epoch}/{epochs} | BC Loss: {avg_bc:.4f} | QL Loss: {avg_ql:.4f} | Critic: {avg_critic:.4f}")
+    print(f"\rÉpoque {epoch} Terminée | BC Loss: {avg_bc:.4f} | QL Loss: {avg_ql:.4f} | Critic: {avg_critic:.4f}")
 
-print("Fini !")
+print(f"Entraînement terminé. Les logs sont dans {save_dir}/training_log.csv")
