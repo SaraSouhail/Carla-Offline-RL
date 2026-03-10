@@ -1,32 +1,31 @@
-import sys
 import os
 import h5py
-import torch
 import numpy as np
+import torch
+from tqdm import tqdm
+from agents.ql_diffusion import DiffusionQL
 
-# Ajouter le dossier actuel au path pour les imports
-sys.path.append(os.getcwd())
-from agents.ql_diffusion import Diffusion_QL
-
-# 1. Chemins
-# 1. Détection automatique du chemin
+# --- CONFIGURATION DES CHEMINS ---
+# Cette structure permet de fonctionner en local ET sur Kaggle sans erreur
 if os.path.exists('/kaggle/input'):
-    # Chemin sur Kaggle (remplace 'nom-du-dataset' par le nom exact affiché dans ton interface Kaggle)
-    dataset_path = '/kaggle/input/dataset/easycarla_offline_dataset.hdf5'
-    save_dir = '/kaggle/working/params_dql_new' # Dossier d'écriture autorisé sur Kaggle
+    dataset_path = '/kaggle/input/datasets/sarasouhail/dataset/easycarla_offline_dataset.hdf5'
+    save_dir = '/kaggle/working/params_dql_new'
 else:
-    # Chemin sur ton PC local
     dataset_path = '../dataset/easycarla_offline_dataset.hdf5'
     save_dir = 'params_dql_new'
 
-# 2. Chargement du Dataset
-print("Chargement du dataset en cours...")
+os.makedirs(save_dir, exist_ok=True)
+
+# --- CHARGEMENT DU DATASET ---
+print(f"Chargement du dataset : {dataset_path}")
 with h5py.File(dataset_path, 'r') as f:
     observations = f['observations'][:]
     actions = f['actions'][:]
-    rewards = f['rewards'][:]
     next_observations = f['next_observations'][:]
+    rewards = f['rewards'][:]
     dones = f['done'][:]
+
+print("Dataset chargé avec succès.")
 
 # 3. Initialisation Agent
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
