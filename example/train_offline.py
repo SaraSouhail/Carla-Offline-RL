@@ -9,8 +9,15 @@ sys.path.append(os.getcwd())
 from agents.ql_diffusion import Diffusion_QL
 
 # 1. Chemins
-dataset_path = '../dataset/easycarla_offline_dataset.hdf5'
-save_dir = 'params_dql_new'
+# 1. Détection automatique du chemin
+if os.path.exists('/kaggle/input'):
+    # Chemin sur Kaggle (remplace 'nom-du-dataset' par le nom exact affiché dans ton interface Kaggle)
+    dataset_path = '/kaggle/input/dataset/easycarla_offline_dataset.hdf5'
+    save_dir = '/kaggle/working/params_dql_new' # Dossier d'écriture autorisé sur Kaggle
+else:
+    # Chemin sur ton PC local
+    dataset_path = '../dataset/easycarla_offline_dataset.hdf5'
+    save_dir = 'params_dql_new'
 
 # 2. Chargement du Dataset
 print("Chargement du dataset en cours...")
