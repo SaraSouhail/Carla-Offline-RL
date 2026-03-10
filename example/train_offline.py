@@ -3,7 +3,7 @@ import h5py
 import numpy as np
 import torch
 from tqdm import tqdm
-from agents.ql_diffusion import DiffusionQL
+from agents.ql_diffusion import Diffusion_QL
 
 # --- CONFIGURATION DES CHEMINS ---
 # Cette structure permet de fonctionner en local ET sur Kaggle sans erreur
