@@ -33,7 +33,7 @@ agent = Diffusion_QL(state_dim=307, action_dim=3, max_action=1.0,
                      device=device, discount=0.99, tau=0.005)
 
 # 4. Boucle d'entraînement
-epochs = 50
+epochs = 20
 steps_per_epoch = 1000
 batch_size = 256
 
