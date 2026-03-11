@@ -31,13 +31,14 @@ print(f"Dataset chargé avec succès ({len(observations)} échantillons).")
 
 # --- 3. INITIALISATION DE L'AGENT ---
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# --- INITIALISATION DE L'AGENT (MODIFIÉE) ---
 agent = Diffusion_QL(
     state_dim=307, 
     action_dim=3, 
     max_action=1.0, 
     device=device, 
-    discount=0.99, 
-    tau=0.005
+    discount=0.95,   # Passé de 0.99 à 0.95 pour stabiliser le Critique
+    tau=0.001        # Passé de 0.005 à 0.001 pour des mises à jour plus douces
 )
 
 # --- 4. CONFIGURATION DE L'ENTRAÎNEMENT ---
